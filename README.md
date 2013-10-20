@@ -1,11 +1,15 @@
 lb_pool
 =======
 
-In-process HTTP load balancer client with retries and backpressure.
+In-process HTTP load balancer client with retries and backpressure for node.js.
 
 If you use HTTP for IPC, or if you consume public APIs with HTTPS, then `lb_pool` can help make your system more reliable, and possibly even faster.
 
 `lb_pool` will use HTTP/1.1 keepalive to all of the available servers, distributing the load while maintaining and reusing TCP connections as appropriate. If a request fails due to a socket error or a user-defined failure condition, the request will be retried on another node. If there are too many pending requests into a pool, new requests are failed immediately to enforce backpressure and guard against cascading failures.
+
+This module is inspired by and rewritten from [poolee](https://github.com/dannycoates/poolee). It is similar in many ways to Twitter's [finagle](https://github.com/twitter/finagle).
+
+More documentation is coming. Soon this will also be published to npm.
 
 # Usage Example
 
