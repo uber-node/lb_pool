@@ -25,10 +25,6 @@ function PoolRequestSet(pool, options, callback) {
         this.max_attempts = options.max_attempts || Math.min(pool.options.max_retries + 1, Math.max(pool.length, 2));
     }
     this.attempts_remaining = this.max_attempts;
-    // No retries allowed for streaming requests.
-    if (this.max_attempts > 1) {
-        options.retry_filter = null;
-    }
 
     this.max_hangups = options.max_hangups || 2;
     this.hangups = 0;
@@ -58,7 +54,7 @@ PoolRequestSet.prototype.handle_response = function (err, response, body) {
             this.aborts++;
         }
 
-        if (this.attempts_remaining > 0 && this.hangups < this.max_hangups && this.aborts < this.max_aborts) {
+        if (this.attempts_remaining > 0 && err.reason !== "full" && err.reason !== "unhealthy" && this.hangups < this.max_hangups && this.aborts < this.max_aborts) {
             this.pool.on_retry(err);
             if (delay > 0) {
                 setTimeout(this.do_request.bind(this), delay);

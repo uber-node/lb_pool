@@ -1,6 +1,6 @@
 // Copyright 2013 Voxer IP LLC. All rights reserved.
 
-var GO,
+var GO, // GO is global object, for passing to a REPL or finding in a core dump
     EventEmitter = require("events").EventEmitter,
     Stream = require("stream"),
     inherits = require("util").inherits;
@@ -79,7 +79,9 @@ function Pool(http, endpoints, options) {
         err.reason = "full";
         err.delay = true;
         err.attempt = { options: options };
-        return callback(err);
+        process.nextTick(function () {
+            callback(err);
+        });
     };
 
     // this special endpoint is returned when there are no healthy endpoints
@@ -91,7 +93,9 @@ function Pool(http, endpoints, options) {
         err.reason = "unhealthy";
         err.delay = true;
         err.attempt = { options: options };
-        return callback(err);
+        process.nextTick(function () {
+            callback(err);
+        });
     };
 }
 inherits(Pool, EventEmitter);
@@ -101,7 +105,7 @@ Pool.prototype.endpoint_health_changed = function (endpoint) {
 };
 
 Pool.prototype.endpoint_timed_out = function (request) {
-    this.emit("timeout", request.endpoint.name + " " + request.options.path, request.state);
+    this.emit("timeout", request);
 };
 
 // returns an array of healthy Endpoints

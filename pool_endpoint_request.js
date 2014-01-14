@@ -92,7 +92,7 @@ PoolEndpointRequest.prototype.on_error = function (err) {
     this.readable = false;
     this.state = "error";
 
-    var msg = this.endpoint.name + " error: " + this.timed_out ? "request timed out" : err.message;
+    var msg = this.endpoint.name + " error: " + (this.timed_out ? "request timed out" : err.message);
     this.endpoint.request_failed({
         reason: err.message,
         attempt: this,
@@ -210,6 +210,7 @@ PoolEndpointRequest.prototype.done = function (err, response, body) {
     var start = this.req_end || Date.now(),
         end = this.res_start || Date.now();
     this.callback(err, response, body, end - start);
+    this.emit("done", err, response, body, this);
     this.callback = null;
 };
 
