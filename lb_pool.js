@@ -1,15 +1,15 @@
 // Copyright 2013 Voxer IP LLC. All rights reserved.
 
-var RV;
+var GO; // global object for attaching to a REPL and finding in core dumps
 
-module.exports = function init(new_RV) {
-    RV = new_RV || {};
+module.exports = function init(new_GO) {
+    GO = new_GO || {};
 
-    RV.KeepAliveAgent = require("./keep_alive_agent")(RV);
-    RV.PoolPinger = require("./pool_pinger")(RV);
-    RV.PoolEndpoint = require("./pool_endpoint")(RV);
-    RV.PoolEndpointRequest = require("./pool_endpoint_request")(RV);
-    RV.PoolRequestSet = require("./pool_request_set")(RV);
+    GO.KeepAliveAgent = require("./keep_alive_agent")(GO);
+    GO.PoolPinger = require("./pool_pinger")(GO);
+    GO.PoolEndpoint = require("./pool_endpoint")(GO);
+    GO.PoolEndpointRequest = require("./pool_endpoint_request")(GO);
+    GO.PoolRequestSet = require("./pool_request_set")(GO);
 
-    return require("./pool")(RV);
+    return require("./pool")(GO);
 };

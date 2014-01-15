@@ -293,4 +293,3 @@ module.exports = function init(new_GO) {
 
 	return Pool;
 };
-

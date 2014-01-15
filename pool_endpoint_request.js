@@ -126,6 +126,8 @@ PoolEndpointRequest.prototype.on_end = function () {
     this.readable = false;
 
     if (this.callback === null) { return; }
+    if (this.timed_out) { return this.on_aborted(); }
+
     this.state = "res_end";
     this.emit("end");
 
