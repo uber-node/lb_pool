@@ -71,6 +71,10 @@ function PoolEndpoint(protocol, ip, port, options) {
 }
 inherits(PoolEndpoint, EventEmitter);
 
+PoolEndpoint.prototype.close = function () {
+    clearInterval(this.timeout_interval);
+};
+
 // options: {
 //   timeout: request timeout in ms (this.timeout)
 //   encoding: response body encoding (utf8)
