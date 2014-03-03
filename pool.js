@@ -288,6 +288,13 @@ Pool.prototype.request_count = function () {
     return this.endpoints.reduce(function (a, b) { return a + b.request_count; }, 0);
 };
 
+Pool.prototype.close = function () {
+    var endpoints = this.endpoints;
+    for (var i = 0; i < endpoints.length; i++) {
+        endpoints[i].close();
+    }
+};
+
 module.exports = function init(new_GO) {
     GO = new_GO;
 
