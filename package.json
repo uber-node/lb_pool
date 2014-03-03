@@ -1,12 +1,12 @@
 {
-    "name": "lb_pool",
-    "version": "1.0.0",
-    "description": "in-process HTTP load balancer client with retries",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/Voxer/lb_pool.git"
-    },
-    "devDependencies": {
-        "mocha": ">=1.8.1"
-    }
+  "name": "lb_pool",
+  "version": "1.0.1",
+  "description": "in-process HTTP load balancer client with retries",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Voxer/lb_pool.git"
+  },
+  "devDependencies": {
+    "mocha": ">=1.8.1"
+  }
 }
