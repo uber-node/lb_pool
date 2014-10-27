@@ -262,7 +262,7 @@ Pool.prototype.get_endpoint = function (options) {
     }
 
     // fail request immediately if the pool is too busy
-    if (total_pending >= this.max_pending) {
+    if (total_pending >= this.max_pending && !options.override_pending) {
         return this.overloaded_endpoint;
     }
 
