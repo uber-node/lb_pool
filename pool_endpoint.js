@@ -73,6 +73,14 @@ inherits(PoolEndpoint, EventEmitter);
 
 PoolEndpoint.prototype.close = function () {
     clearInterval(this.timeout_interval);
+    // No more ping-ing.
+    this.ping_path = null;
+    var request_ids = Object.keys(this.requests);
+    for (var i = 0; i < request_ids.length; i++) {
+        var req_id = request_ids[i];
+        this.requests[req_id].on_aborted();
+        this.delete_request(req_id);
+    }
 };
 
 // options: {

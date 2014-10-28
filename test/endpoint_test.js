@@ -420,4 +420,26 @@ describe("PoolEndpoint", function () {
             e.set_healthy(true);
         });
     });
+
+    describe("close()", function () {
+        it("aborts pending requests", function (done) {
+            var failed;
+            var s = http.createServer(function (req, res) {
+                process.nextTick(function () {
+                    assert(failed);
+                    s.close();
+                    done();
+                });
+            }).on("listening", function () {
+                var e = new PoolEndpoint(http, "127.0.0.1", 6969);
+                e.request({path: "/foo", method: "PUT", data: new Buffer("ƒoo")}, function (err, res) {
+                    assert(err);
+                    assert(!res);
+                    failed = true;
+                });
+                e.close();
+            });
+            s.listen(6969);
+        });
+    });
 });

@@ -4,7 +4,7 @@ var assert = require("assert");
 var http = require("http");
 var Pool = require("../lb_pool")({});
 
-describe("Pool reqeust()", function () {
+describe("Pool request()", function () {
     it("passes options all the way to the endpoint request", function (done) {
         var pool = new Pool(http, ["127.0.0.1:6969"]);
         var s = http.createServer(function (req, res) {
@@ -152,7 +152,7 @@ describe("Pool reqeust()", function () {
         });
     });
 
-    it("throws if options.endpoint doesn't match anything", function (done) {
+    it("fails if options.endpoint doesn't match anything", function (done) {
         var req_count = 0;
         var listen_count = 0;
         var ports = [6960, 6961, 6962, 6963, 6964, 6965];
@@ -161,17 +161,17 @@ describe("Pool reqeust()", function () {
         var pool = new Pool(http, endpoint_list, { ping: "/ping" });
         var failed_port;
         function next() {
-            assert.throws(function () {
-                pool.get({
-                    path: "/foo",
-                    endpoint: "127.0.0.1:9999",
-                    retry_delay: 100,
-                    max_attempts: 5,
-                    max_hangups: 4
-                }, null, function () {});
+            pool.get({
+                path: "/foo",
+                endpoint: "127.0.0.1:9999",
+                retry_delay: 100,
+                max_attempts: 5,
+                max_hangups: 4
+            }, null, function (err) {
+                assert(err);
+                servers.forEach(function (server) { server.close(); });
+                done();
             });
-            servers.forEach(function (server) { server.close(); });
-            done();
         }
         function on_request(port, req, res) {
             if (req.url === "/ping") {
