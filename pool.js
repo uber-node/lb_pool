@@ -28,6 +28,7 @@ function Pool(http, endpoints, options) {
     if (! Array.isArray(endpoints)) {
         throw new Error("endpoints must be an array");
     }
+    this.http = http;
 
     options = options || {};
     options.retry_filter = options.retry_filter || options.retryFilter;
@@ -52,23 +53,14 @@ function Pool(http, endpoints, options) {
     this.endpoints = [];
     this.endpoints_by_name = {};
 
+    this.length = 0;
     for (var i = 0; i < endpoints.length; i++) {
-        var ip_port = endpoints[i].split(":");
-        var ip = ip_port[0];
-        var port = +ip_port[1];
-        if (port > 0 && port < 65536) {
-            var endpoint = new GO.PoolEndpoint(http, ip, port, options);
-            endpoint.on("health", this.endpoint_health_changed.bind(this));
-            endpoint.on("timeout", this.endpoint_timed_out.bind(this));
-            this.endpoints.push(endpoint);
-            this.endpoints_by_name[endpoints[i]] = endpoint;
-        }
+        this.add_endpoint(endpoints[i]);
     }
 
     if (this.endpoints.length === 0) {
         throw new Error("no valid endpoints");
     }
-    this.length = this.endpoints.length;
 
     // this special endpoint is returned when the pool is overloaded
     this.overloaded_endpoint = new GO.PoolEndpoint({Agent: Object}, null, null, {timeout: 0});
@@ -239,7 +231,7 @@ Pool.prototype.get_endpoint = function (options) {
     if (options.endpoint) {
         endpoint = this.endpoints_by_name[options.endpoint];
         if (!endpoint) {
-            throw new Error("no endpoint found matching " + options.endpoint);
+            return this.unhealthy_endpoint;
         }
         if (endpoint.pending >= this.max_pending) {
             return this.overloaded_endpoint;
@@ -294,6 +286,41 @@ Pool.prototype.close = function () {
         endpoints[i].close();
     }
 };
+
+// Dynamic membership
+Pool.prototype.add_endpoint = function (host_port) {
+    var ip_port = host_port.split(":");
+    var ip = ip_port[0];
+    var port = +ip_port[1];
+    if (port > 0 && port < 65536) {
+        var endpoint = new GO.PoolEndpoint(this.http, ip, port, this.options);
+        endpoint.on("health", this.endpoint_health_changed.bind(this));
+        endpoint.on("timeout", this.endpoint_timed_out.bind(this));
+        this.endpoints.push(endpoint);
+        this.length++;
+        this.endpoints_by_name[host_port] = endpoint;
+    }
+};
+
+Pool.prototype.remove_endpoint = function (host_port) {
+    var ip_port = host_port.split(":");
+    var ip = ip_port[0];
+    var port = +ip_port[1];
+    var endpoint = this.endpoints_by_name[host_port];
+    if (!endpoint) { return; }
+
+    delete this.endpoints_by_name[host_port];
+    endpoint.close();
+    this.length--;
+    var endpoints = this.endpoints;
+    for (var i = 0; i < endpoints.length; i++) {
+        if (endpoints[i] === endpoint) {
+            endpoints.splice(i, 1);
+            return;
+        }
+    }
+};
+
 
 module.exports = function init(new_GO) {
     GO = new_GO;

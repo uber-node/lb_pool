@@ -289,4 +289,16 @@ describe("Pool", function () {
             });
         });
     });
+
+    describe("remove_endpoint()", function () {
+        it("fails future requests", function (done) {
+            var pool = new Pool(http, ["127.0.0.1:8080", "127.0.0.1:8081"]);
+            pool.remove_endpoint("127.0.0.1:8081");
+            pool.get({endpoint: "127.0.0.1:8081", path: "/"}, function (err, res) {
+                assert(err);
+                assert(!res);
+                done();
+            });
+        });
+    });
 });
