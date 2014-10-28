@@ -73,6 +73,7 @@ PoolRequestSet.prototype.handle_response = function (err, response, body) {
 PoolRequestSet.prototype.do_request = function () {
     var endpoint = this.pool.get_endpoint(this.options),
         self = this;
+
     return endpoint.request(this.options, function (err, res, body, duration) {
         self.duration = duration;
         self.handle_response(err, res, body);

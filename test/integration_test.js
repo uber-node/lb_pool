@@ -71,6 +71,39 @@ describe("Pool reqeust()", function () {
         });
     });
 
+    it("allows specified requests to skip the max_pending check", function (done) {
+        var port = 6969;
+        var pool = new Pool(http, ["127.0.0.1:" + port], { ping: "/ping", max_pending: 1 });
+        var server;
+
+        function on_listening() {
+            var completed = 0;
+            [1, 2, 3, 4].forEach(function (num) {
+                pool.get({
+                    path: "/foo/" + num,
+                    override_pending: true
+                }, null, function (err, res, body) {
+                    assert.ifError(err);
+                    assert.strictEqual(body, "OK " + num);
+                    completed++;
+                    if (completed === 4) {
+                        server.close();
+                        done();
+                    }
+                });
+            });
+        }
+
+        function on_request(req, res) {
+            var num = require("url").parse(req.url).pathname.split("/")[2];
+            res.end("OK " + num);
+        }
+
+        server = http.createServer(on_request);
+        server.listen(port);
+        server.on("listening", on_listening);
+    });
+
     it("uses a specific endpoint if options.endpoint is set, even on retries", function (done) {
         var req_count = 0;
         var listen_count = 0;

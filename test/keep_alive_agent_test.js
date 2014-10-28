@@ -26,8 +26,10 @@ describe("KeepAliveAgent", function () {
     var server;
 
     beforeEach(function (done) {
+        var count = 0;
         server = http.createServer(function (request, response) {
-            response.end("pong");
+            count++;
+            response.end("pong " + count);
         });
         server.on("listening", done);
         server.listen(server_config.port);
@@ -71,31 +73,38 @@ describe("KeepAliveAgent", function () {
         var interval_id;
 
         var request_one = function () {
-            http.get(get_options, function () {
-                if (--requests_todo === 0) {
-                    clearInterval(interval_id);
-
+            get_options.path = "/" + requests_todo;
+            http.get(get_options, function (res) {
+                res.on("data", function on_data(chunk) {});
+                res.on("end", function on_end() {
+                    // HTTP cleanup needs to happen to trigger Agent socket behavior
                     process.nextTick(function () {
-                        assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true);
-                        assert.strictEqual(agent.idle_sockets[socket_name].length, 1);
-                        var socket = agent.idle_sockets[socket_name][0];
-                        assert.strictEqual(socket.request_count, 10);
-                        done();
+                        if (--requests_todo === 0) {
+                            assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true);
+                            assert.strictEqual(agent.idle_sockets[socket_name].length, 1);
+                            var socket = agent.idle_sockets[socket_name][0];
+                            assert.strictEqual(socket.request_count, 10);
+                            done();
+                        } else {
+                            request_one();
+                        }
                     });
-                }
+                });
             });
         };
 
-        interval_id = setInterval(request_one, 5);
+        request_one();
     });
 
     it("does not return destroyed sockets to the idle pool", function (done) {
         var agent = new KeepAliveAgent.HTTP();
         make_test_request(agent, function (response) {
-            response.connection.destroy();
             process.nextTick(function () {
-                assert.strictEqual(agent.idle_sockets[socket_name], undefined);
-                done();
+                response.connection.destroy();
+                process.nextTick(function () {
+                    assert.strictEqual(Object.keys(agent.idle_sockets).length, 0);
+                    done();
+                });
             });
         });
     });
@@ -117,20 +126,31 @@ describe("KeepAliveAgent", function () {
     it("reuses a good socket until it is destroyed", function (done) {
         var agent = new KeepAliveAgent.HTTP();
 
-        make_test_request(agent, function () {
-            process.nextTick(function () {
-                assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
-                assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
-                var socket = agent.idle_sockets[socket_name][0];
-                assert.strictEqual(socket.request_count, 1, "expected socket request count to be 1");
+        make_test_request(agent, function (res) {
+            res.on("data", function (chunk) {});
+            res.on("end", function () {
+                process.nextTick(function () {
+                    assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
+                    assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
+                    var socket = agent.idle_sockets[socket_name][0];
+                    assert.strictEqual(socket.request_count, 1, "expected socket request count to be 1");
 
-                make_test_request(agent, function (response) {
+                    socket.destroy();
+
                     process.nextTick(function () {
-                        assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
-                        assert.strictEqual(agent.idle_sockets[socket_name].length, 0, "expected idle sockets list to be empty");
-                        done();
+                        make_test_request(agent, function (res) {
+                            res.on("data", function (chunk) {});
+                            res.on("end", function () {
+                                process.nextTick(function () {
+                                    assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
+                                    assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
+                                    var socket = agent.idle_sockets[socket_name][0];
+                                    assert.strictEqual(socket.request_count, 1, "expected socket request count to be 1");
+                                    done();
+                                });
+                            });
+                        });
                     });
-                    response.connection.destroy();
                 });
             });
         });
@@ -140,15 +160,18 @@ describe("KeepAliveAgent", function () {
         var agent = new KeepAliveAgent.HTTP({max_reqs_per_socket: 2});
 
         make_test_request(agent, function (response) {
+            response.on("data", function (chunk) {});
             response.on("end", function () {
                 process.nextTick(function () {
                     var socket = agent.idle_sockets[socket_name][0];
                     assert.strictEqual(socket.request_count, 1, "socket.request_count should be 1");
                     make_test_request(agent, function (response) {
+                        response.on("data", function (chunk) {});
                         response.on("end", function () {
                             process.nextTick(function () {
                                 assert.strictEqual(agent.idle_sockets[socket_name].length, 0, "agent should have no idle sockets");
                                 make_test_request(agent, function (response) {
+                                    response.on("data", function (chunk) {});
                                     response.on("end", function () {
                                         process.nextTick(function () {
                                             assert.strictEqual(agent.idle_sockets[socket_name][0].request_count, 1);
@@ -193,19 +216,28 @@ describe("KeepAliveAgent.Secure", function () {
         };
         var socket_name = "one.voxer.com:443";
 
-        https.get(get_options, function () {
-            process.nextTick(function () {
-                assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
-                assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
-                var socket = agent.idle_sockets[socket_name][0];
-                assert.strictEqual(socket.request_count, 1, "expected socket request count to be 1");
+        https.get(get_options, function (res) {
+            res.on("data", function (chunk) {});
+            res.on("error", function (e) {});
+            res.on("end", function () {
+                process.nextTick(function () {
+                    assert.strictEqual(Array.isArray(agent.idle_sockets[socket_name]), true, "expected idle sockets list for " + socket_name + " to be an array");
+                    assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
+                    var socket = agent.idle_sockets[socket_name][0];
+                    assert.strictEqual(socket.request_count, 1, "expected socket request count to be 1");
 
-                https.get(get_options, function (response) {
+                    socket.destroy();
                     process.nextTick(function () {
-                        assert.equal(agent.idle_sockets[socket_name].length, 0, "expected zero sockets in our idle queue");
-                        done();
+                        https.get(get_options, function (res) {
+                            res.on("data", function (chunk) {});
+                            res.on("end", function () {
+                                process.nextTick(function () {
+                                    assert.strictEqual(agent.idle_sockets[socket_name].length, 1, "expected idle sockets list to contain exactly 1 item");
+                                    done();
+                                });
+                            });
+                        });
                     });
-                    response.connection.destroy();
                 });
             });
         });
