@@ -39,6 +39,10 @@ PoolPinger.prototype.ping = function () {
 PoolPinger.prototype.make_request = function () {
     var self = this;
 
+    if (! this.pool_endpoint.ping_path) {
+        return;
+    }
+
     this.req_timer = setTimeout(function () {
         self.on_timeout();
     }, this.ping_timeout);

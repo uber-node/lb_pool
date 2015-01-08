@@ -441,5 +441,26 @@ describe("PoolEndpoint", function () {
             });
             s.listen(6969);
         });
+
+        it("prevents pinger from requesting /", function (done) {
+            var port = 9999;
+            var e = new PoolEndpoint(http, "127.0.0.1", port, {ping: "/health"});
+            var s = http.createServer(function(req, res) {
+                if (req.url === "/health") {
+                    e.close(); // Resets pinger.ping_path
+                    e.pinger.out_req.abort(); // Causes pinger request error
+                    e.pinger.out_req = null; // Nullifies pinger request to assert later
+                    s.close(function() {
+                        assert.equal(e.pinger.out_req, null, "out_req is not reset by subsequent request to /");
+                        done();
+                    });
+                }
+            });
+            s.on("listening", function () {
+                e.set_healthy(false); // Start pinger
+                e.pinger.attempts = -1; // Hack to induce immediate pinger request
+            });
+            s.listen(port);
+        });
     });
 });
