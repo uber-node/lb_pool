@@ -180,6 +180,7 @@ Pool.prototype.request = function (options, data, callback) {
             options.reused = false;
         }
         self.emit("timing", req_set.duration, options);
+        self.emit("response", err, req_set);
         callback(err, res, body);
     });
     return req_set.do_request();

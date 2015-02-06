@@ -232,6 +232,44 @@ describe("Pool", function () {
                 assert.equal(body, success_body);
             });
         });
+
+        it("causes pool to emit response event", function (done) {
+            var doneCounter = 0;
+            var pool = new Pool(http, ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]);
+
+            function doneOne() {
+                if (++doneCounter === 2) {
+                    done();
+                }
+            }
+
+            function assertResponse(assertions) {
+                pool.once("response", function (err, poolReq) {
+                    assertions(err, poolReq);
+                    assert.ok(poolReq);
+                    assert.equal(poolReq.options.path, "/foo");
+                    doneOne();
+                });
+            }
+
+            function requestFoo() {
+                pool.request("/foo", function() {});
+            }
+
+            // Without error
+            FakeEndpointRequest.prototype.start = start_with_success;
+            assertResponse(function(err) {
+                assert.ifError(err);
+            });
+            requestFoo();
+
+            // With error
+            FakeEndpointRequest.prototype.start = start_with_fail;
+            assertResponse(function(err) {
+                assert.ok(err);
+            });
+            requestFoo();
+        });
     });
 
     describe("get()", function () {
