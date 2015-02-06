@@ -244,8 +244,8 @@ describe("Pool", function () {
             }
 
             function assertResponse(assertions) {
-                pool.once("response", function (err, poolReq) {
-                    assertions(err, poolReq);
+                pool.once("response", function (err, poolReq, res) {
+                    assertions(err, poolReq, res);
                     assert.ok(poolReq);
                     assert.equal(poolReq.options.path, "/foo");
                     doneOne();
@@ -258,15 +258,17 @@ describe("Pool", function () {
 
             // Without error
             FakeEndpointRequest.prototype.start = start_with_success;
-            assertResponse(function(err) {
+            assertResponse(function(err, poolReq, res) {
                 assert.ifError(err);
+                assert.ok(res);
             });
             requestFoo();
 
             // With error
             FakeEndpointRequest.prototype.start = start_with_fail;
-            assertResponse(function(err) {
+            assertResponse(function(err, poolReq, res) {
                 assert.ok(err);
+                assert.equal(res, undefined);
             });
             requestFoo();
         });
