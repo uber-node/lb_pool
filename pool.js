@@ -199,6 +199,12 @@ Pool.prototype.post = function (options, data, callback) {
     return this.request(options, data, callback);
 };
 
+Pool.prototype.head = function (options, data, callback) {
+    options = this.init_req_options(options);
+    options.method = "HEAD";
+    return this.request(options, data, callback);
+};
+
 Pool.prototype.del = function (options, callback) {
     options = this.init_req_options(options);
     options.method = "DELETE";
