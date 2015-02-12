@@ -244,4 +244,22 @@ describe("Pool request()", function () {
         });
         next();
     });
+
+    it("dont retry timeout", function (done) {
+        var reqs = 0;
+        var server = http.createServer(function (req, res) { reqs++; }).listen(6960);
+        var pool = new Pool(http, ["127.0.0.1:6960"], { ping: "/ping", timeout: 20 });
+        pool.on("retrying", function () { throw new Error(); });
+        pool.get({
+            path: "/foo",
+            retry_delay: 1
+        }, function (err, res, body) {
+            assert(err);
+            assert(!res);
+            assert(!body);
+            assert.equal(reqs, 1);
+            server.close();
+            done();
+        });
+    });
 });
