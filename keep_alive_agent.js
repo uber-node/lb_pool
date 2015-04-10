@@ -23,6 +23,23 @@ function KeepAliveAgent(options) {
 }
 inherits(KeepAliveAgent, http.Agent);
 
+// http.Agent has a destroy() method in node 0.12 but not in node 0.10
+if (!KeepAliveAgent.prototype.destroy) {
+    KeepAliveAgent.prototype.destroy = function destroy() {
+        var self = this;
+        if (this.sockets) {
+            Object.keys(this.sockets).forEach(function (key) {
+                var socks = self.sockets[key];
+                if (socks) {
+                    socks.forEach(function (sock) {
+                        sock.unref();
+                    });
+                }
+            });
+        }
+    };
+}
+
 KeepAliveAgent.prototype.build_name_key = function (host, port, local_address) {
     var name = host + ":" + port;
     if (local_address) {
@@ -121,7 +138,7 @@ HTTPSKeepAliveAgent.prototype.defaultPort = 443;
 
 HTTPSKeepAliveAgent.prototype.is_socket_usable = function (socket) {
     // TLS sockets null out their secure pair's ssl field in destroy() and do not set destroyed the way non-secure sockets do.
-	return socket.pair && socket.pair.ssl;
+    return socket.pair && socket.pair.ssl;
 };
 
 module.exports = function init() {
