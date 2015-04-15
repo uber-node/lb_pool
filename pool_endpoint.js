@@ -81,6 +81,10 @@ PoolEndpoint.prototype.close = function () {
         this.requests[req_id].on_aborted();
         this.delete_request(req_id);
     }
+
+    if (this.agent && typeof(this.agent.destroy) === 'function') {
+        this.agent.destroy();
+    }
 };
 
 // options: {
@@ -219,11 +223,11 @@ PoolEndpoint.prototype.set_healthy = function (new_state) {
 PoolEndpoint.prototype.setHealthy = PoolEndpoint.prototype.set_healthy;
 
 PoolEndpoint.prototype.delete_request = function (id) {
-	delete this.requests[id];
+    delete this.requests[id];
 };
 
 module.exports = function init(new_global) {
     GO = new_global;
 
-	return PoolEndpoint;
+    return PoolEndpoint;
 };
