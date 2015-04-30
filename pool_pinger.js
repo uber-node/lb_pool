@@ -54,9 +54,11 @@ PoolPinger.prototype.make_request = function () {
         path: this.pool_endpoint.ping_path
     });
     this.out_req.on("response", function (res) {
+        self.out_req = null;
         self.on_response(res);
     });
     this.out_req.on("error", function () {
+        self.out_req = null;
         self.attempts++;
         self.ping();
     });
@@ -76,6 +78,7 @@ PoolPinger.prototype.on_response = function (res) {
 PoolPinger.prototype.on_timeout = function () {
     this.req_timer = null;
     this.out_req.abort();
+    this.out_req = null;
     // calling abort() will run the "error" listener which will retry
 };
 
