@@ -54,7 +54,12 @@ PoolRequestSet.prototype.handle_response = function (err, response, body) {
             this.aborts++;
         }
 
-        if (this.attempts_remaining > 0 && err.reason !== "full" && err.reason !== "unhealthy" && this.hangups < this.max_hangups && this.aborts < this.max_aborts) {
+        if (this.attempts_remaining > 0 &&
+          err.reason !== "full" &&
+          err.reason !== "unhealthy" &&
+          err.message.indexOf("timed out") === -1 &&
+          this.hangups < this.max_hangups &&
+          this.aborts < this.max_aborts) {
             this.pool.on_retry(err);
             if (delay > 0) {
                 setTimeout(this.do_request.bind(this), delay);
