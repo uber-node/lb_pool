@@ -80,7 +80,7 @@ describe("PoolEndpoint", function () {
                 var error;
                 e.request({path: "/foo", method: "GET"}, function (err, response, body) {
                     error = err;
-                    assert.strictEqual(error.reason, "socket hang up");
+                    assert.strictEqual(error.reason, "timed_out");
                     assert.strictEqual(/request timed out$/.test(error.message), true);
                     assert.strictEqual(response, undefined);
                     assert.strictEqual(body, undefined);
@@ -118,7 +118,7 @@ describe("PoolEndpoint", function () {
 
                 setTimeout(function () {
                     s.close();
-                    assert.equal(error.reason, "aborted");
+                    assert.equal(error.reason, "timed_out");
                     assert.equal(/response timed out$/.test(error.message), true);
                     done();
                 }, 60);
@@ -192,7 +192,8 @@ describe("PoolEndpoint", function () {
 
                 setTimeout(function () {
                     s.close();
-                    assert.equal(error.reason, "socket hang up");
+                    assert.equal(error.reason, "timed_out");
+                    assert.equal(/request timed out$/.test(error.message), true);
                     assert.equal(Object.keys(e.requests).length, 0);
                     done();
                 }, 50);

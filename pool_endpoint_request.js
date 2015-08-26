@@ -88,6 +88,10 @@ PoolEndpointRequest.prototype.on_error = function (err) {
         return;
     }
 
+    if (this.timed_out) {
+        return this.on_request_timeout();
+    }
+
     this.writable = false;
     this.readable = false;
     this.state = "error";
@@ -126,7 +130,7 @@ PoolEndpointRequest.prototype.on_end = function () {
     this.readable = false;
 
     if (this.callback === null) { return; }
-    if (this.timed_out) { return this.on_aborted(); }
+    if (this.timed_out) { return this.on_response_timeout(); }
 
     this.state = "res_end";
     this.emit("end");
@@ -158,8 +162,7 @@ PoolEndpointRequest.prototype.on_aborted = function () {
         return;
     }
 
-    var msg = this.endpoint.name + " error: ";
-    msg += this.timed_out ? "response timed out" : "connection aborted";
+    var msg = this.endpoint.name + " error: connection aborted";
     this.state = "res_aborted";
     this.endpoint.request_failed({
         reason: "aborted",
@@ -168,6 +171,35 @@ PoolEndpointRequest.prototype.on_aborted = function () {
     }, this);
 };
 
+// timeout occurred before receiving anything from server
+PoolEndpointRequest.prototype.on_request_timeout = function () {
+    if (!this.callback) {
+        return;
+    }
+
+    var msg = this.endpoint.name + " error: request timed out";
+    this.state = "req_timeout";
+    this.endpoint.request_failed({
+        reason: "timed_out",
+        attempt: this,
+        message: msg,
+    }, this);
+};
+
+// timeout occurred after receiving partial response from server
+PoolEndpointRequest.prototype.on_response_timeout = function () {
+    if (!this.callback) {
+        return;
+    }
+
+    var msg = this.endpoint.name + " error: response timed out";
+    this.state = "res_timeout";
+    this.endpoint.request_failed({
+        reason: "timed_out",
+        attempt: this,
+        message: msg,
+    }, this);
+};
 
 PoolEndpointRequest.prototype.write = function (buf) {
     // Prevent memory leak in node 0.8.16

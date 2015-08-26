@@ -142,6 +142,7 @@ PoolEndpoint.prototype.stats = function () {
         failures: this.failures,
         filtered: this.filtered,
         healthy: this.healthy,
+        socket_count: this.agent.sockets[this.name] ? this.agent.sockets[this.name].length : 0,
         socket_request_counts: request_counts
     };
 };

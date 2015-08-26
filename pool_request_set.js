@@ -26,6 +26,9 @@ function PoolRequestSet(pool, options, callback) {
     }
     this.attempts_remaining = this.max_attempts;
 
+    this.max_timeouts = options.max_timeouts || 1; // no retries on timeouts by default
+    this.timeouts = 0;
+
     this.max_hangups = options.max_hangups || 2;
     this.hangups = 0;
 
@@ -52,9 +55,12 @@ PoolRequestSet.prototype.handle_response = function (err, response, body) {
             this.hangups++;
         } else if (err.reason === "aborted") {
             this.aborts++;
+        } else if (err.reason === "timed_out") {
+            this.timeouts++;
         }
 
-        if (this.attempts_remaining > 0 && err.reason !== "full" && err.reason !== "unhealthy" && this.hangups < this.max_hangups && this.aborts < this.max_aborts) {
+        if (this.attempts_remaining > 0 && err.reason !== "full" && err.reason !== "unhealthy" &&
+            this.hangups < this.max_hangups && this.aborts < this.max_aborts && this.timeouts < this.max_timeouts) {
             this.pool.on_retry(err);
             if (delay > 0) {
                 setTimeout(this.do_request.bind(this), delay);
