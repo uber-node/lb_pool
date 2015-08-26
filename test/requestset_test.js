@@ -37,6 +37,13 @@ function aborted_request(options, cb) {
     });
 }
 
+function timeout_request(options, cb) {
+    return cb({
+        message: "timed out",
+        reason: "timed_out"
+    });
+}
+
 var pool = {
     options: { max_retries: 5 },
     get_endpoint: function () {
@@ -165,6 +172,41 @@ describe("PoolRequestSet", function () {
             };
             var r = new PoolRequestSet(p, {}, function (err, res, body) {
                 assert.strictEqual(err.reason, "aborted");
+                assert.strictEqual(res, undefined);
+                assert.strictEqual(body, undefined);
+                done();
+            });
+            r.do_request();
+        });
+
+        it("retries timeouts once", function (done) {
+            var i = 0;
+            var p = {
+                options: { max_retries: 5 },
+                get_endpoint: function () { return this.endpoints[i++]; },
+                on_retry: function () {},
+                length: 2,
+                endpoints: [{ request: timeout_request }, { request: succeeding_request }]
+            };
+            var r = new PoolRequestSet(p, { max_timeouts: 2 }, function (err, res, body) {
+                assert.equal(err, null);
+                assert.equal(body, "foo");
+                done();
+            });
+            r.do_request();
+        });
+
+        it("no retries on timeouts by default", function (done) {
+            var i = 0;
+            var p = {
+                options: { max_retries: 5 },
+                get_endpoint: function () { return this.endpoints[i++]; },
+                on_retry: function () {},
+                length: 2,
+                endpoints: [{ request: timeout_request }, { request: succeeding_request }]
+            };
+            var r = new PoolRequestSet(p, {}, function (err, res, body) {
+                assert.strictEqual(err.reason, "timed_out");
                 assert.strictEqual(res, undefined);
                 assert.strictEqual(body, undefined);
                 done();
