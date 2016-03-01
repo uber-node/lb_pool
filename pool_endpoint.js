@@ -6,6 +6,7 @@ var GO, // Global Object
     EventEmitter = require("events").EventEmitter;
 
 var MAX_COUNT = Math.pow(2, 52); // if we need more than 51 bits, wrap around at 4,503,599,627,370,495.
+var MAX_REQ_TIMEOUT_COUNT = 10;
 
 // PoolEndpoint - a backend that requests can be sent to
 // http: either require("http") or require("https")
@@ -18,7 +19,8 @@ var MAX_COUNT = Math.pow(2, 52); // if we need more than 51 bits, wrap around at
 //   timeout: default request timeout in ms (60000)
 //   resolution: how often timeouts are checked in ms (1000)
 //   keep_alive: use an alternate Agent that does keep-alive properly (boolean) default false
-//   agent_ptions: {} an object for passing options directly to the Http Agent
+//   agent_ptions: {} an object for passing options directly to the Http Agent,
+//   max_req_timeout_count: max # of consesecutive req_timeout allowed before setting this endpoint as not healthy
 // }
 function PoolEndpoint(protocol, ip, port, options) {
     options = options || {};
@@ -54,6 +56,11 @@ function PoolEndpoint(protocol, ip, port, options) {
     this.successes = 0;
     this.failures = 0;
     this.filtered = 0;
+    // # of consecutive req_timeout
+    this.req_timeout_count = 0;
+    // max # of consecutive req_timeout allowed before setting this endpoint as
+    // not healthy
+    this.max_req_timeout_count = options.max_req_timeout_count || options.maxReqTimeoutCount || MAX_REQ_TIMEOUT_COUNT;
 
     this.timeout = (options.timeout === 0) ? 0 : options.timeout || (60 * 1000);
     this.resolution = (options.resolution === 0) ? 0 : options.resolution || 1000;
@@ -159,10 +166,23 @@ PoolEndpoint.prototype.check_timeouts = function () {
             }
             request.timed_out = true;
             request.out_request.abort();
+            this.increase_req_timeout_count();
         }
     }
     this.request_rate = this.request_count - this.requests_last_check;
     this.requests_last_check = this.request_count;
+};
+
+PoolEndpoint.prototype.increase_req_timeout_count = function () {
+    this.req_timeout_count += 1;
+    if (this.req_timeout_count >= this.max_req_timeout_count) {
+        this.set_healthy(false);
+        this.req_timeout_count = 0;
+    }
+};
+
+PoolEndpoint.prototype.reset_req_timeout_count = function () {
+    this.req_timeout_count = 0;
 };
 
 PoolEndpoint.prototype.reset_counters = function () {
@@ -189,6 +209,7 @@ PoolEndpoint.prototype.complete = function (err, request, response, body) {
 PoolEndpoint.prototype.request_succeeded = function (request, response, body) {
     this.successes++;
     this.complete(null, request, response, body);
+    this.reset_req_timeout_count();
 };
 
 PoolEndpoint.prototype.request_failed = function (err, request) {
