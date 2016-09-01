@@ -143,6 +143,7 @@ PoolEndpointRequest.prototype.on_end = function () {
         } else {
             body = body_buf;
         }
+        this.body_chunks.length = 0;
     }
 
     var delay = this.options.retry_filter(this.options, this.response, body);
