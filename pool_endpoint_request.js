@@ -99,7 +99,7 @@ PoolEndpointRequest.prototype.on_error = function (err) {
     var msg = this.endpoint.name + " error: " + (this.timed_out ? "request timed out" : err.message);
     this.endpoint.request_failed({
         reason: err.message,
-        attempt: this,
+        attempt: this.get_attempt_info(),
         message: msg,
     }, this);
 };
@@ -151,7 +151,7 @@ PoolEndpointRequest.prototype.on_end = function () {
         return this.endpoint.filter_rejected({
             delay: delay,
             reason: "filter",
-            attempt: this,
+            attempt: this.get_attempt_info(),
             message: self.endpoint.name + " error: rejected by filter"
         }, this);
     }
@@ -167,7 +167,7 @@ PoolEndpointRequest.prototype.on_aborted = function () {
     this.state = "res_aborted";
     this.endpoint.request_failed({
         reason: "aborted",
-        attempt: this,
+        attempt: this.get_attempt_info(),
         message: msg,
     }, this);
 };
@@ -182,7 +182,7 @@ PoolEndpointRequest.prototype.on_request_timeout = function () {
     this.state = "req_timeout";
     this.endpoint.request_failed({
         reason: "timed_out",
-        attempt: this,
+        attempt: this.get_attempt_info(),
         message: msg,
     }, this);
 };
@@ -197,7 +197,7 @@ PoolEndpointRequest.prototype.on_response_timeout = function () {
     this.state = "res_timeout";
     this.endpoint.request_failed({
         reason: "timed_out",
-        attempt: this,
+        attempt: this.get_attempt_info(),
         message: msg,
     }, this);
 };
@@ -248,6 +248,46 @@ PoolEndpointRequest.prototype.done = function (err, response, body) {
     this.emit("done", err, response, body, this);
     this.callback = null;
 };
+
+PoolEndpointRequest.prototype.get_attempt_info = get_attempt_info;
+function get_attempt_info() {
+    return new PoolEndpointRequestAttempt(this);
+}
+
+function PoolEndpointRequestAttempt(poolEndpointRequest) {
+    var options = poolEndpointRequest.options || {};
+    var endpoint = poolEndpointRequest.endpoint || {};
+
+    this.endpoint_address = endpoint.address;
+    this.endpoint_failures = endpoint.failures;
+    this.endpoint_filtered = endpoint.filtered;
+    this.endpoint_healthy = endpoint.healthy;
+    this.endpoint_ip = endpoint.ip;
+    this.endpoint_keepalive = endpoint.keep_alive;
+    this.endpoint_name = endpoint.name;
+    this.endpoint_pending = endpoint.pending;
+    this.endpoint_port = endpoint.port;
+    this.endpoint_request_count = endpoint.request_count;
+    this.endpoint_request_last_check = endpoint.requests_last_check;
+    this.endpoint_request_rate = endpoint.request_rate;
+    this.endpoint_resolution = endpoint.resolution;
+    this.endpoint_successes = endpoint.successes;
+    this.endpoint_timeout = endpoint.timeout;
+    this.options_headers = options.headers;
+    this.options_host = options.host;
+    this.options_method = options.method;
+    this.options_path = options.path;
+    this.options_port = options.port;
+    this.options_retry_delay = options.retry_delay;
+    this.options_reused = options.reused;
+    this.options_success = options.success;
+    this.options_timeout = options.timeout;
+    this.request_last_touched = poolEndpointRequest.last_touched;
+    this.request_readable = poolEndpointRequest.readable;
+    this.request_req_end = poolEndpointRequest.req_end;
+    this.request_res_start = poolEndpointRequest.res_start;
+    this.request_writable = poolEndpointRequest.writable;
+}
 
 module.exports = function init(new_GO) {
     GO = new_GO;
