@@ -43,6 +43,12 @@ if (!KeepAliveAgent.prototype.destroy) {
 }
 
 KeepAliveAgent.prototype.build_name_key = function (host, port, local_address) {
+    if (typeof host !== 'string') {
+        port = host.port;
+        local_address = host.localAddress;
+        host = host.host;
+    }
+
     var name = host + ":" + port;
     if (local_address) {
         name += ":" + local_address;
