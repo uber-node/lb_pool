@@ -134,24 +134,8 @@ KeepAliveAgent.prototype.removeSocket = function (socket, name, host, port, loca
     http.Agent.prototype.removeSocket.call(this, socket, name, host, port, local_address);
 };
 
-
-function HTTPSKeepAliveAgent(options) {
-    KeepAliveAgent.call(this, options);
-    this.createConnection = https.globalAgent.createConnection; // node Agent API
-}
-inherits(HTTPSKeepAliveAgent, KeepAliveAgent);
-
-// defaultPort is part of the node API for Agent
-HTTPSKeepAliveAgent.prototype.defaultPort = 443;
-
-HTTPSKeepAliveAgent.prototype.is_socket_usable = function (socket) {
-    // TLS sockets null out their secure pair's ssl field in destroy() and do not set destroyed the way non-secure sockets do.
-    return socket.pair && socket.pair.ssl;
-};
-
 module.exports = function init() {
     return {
-        HTTP: KeepAliveAgent,
-        HTTPS: HTTPSKeepAliveAgent
+        HTTP: KeepAliveAgent
     };
 };
