@@ -8,6 +8,8 @@ function KeepAliveAgent(options) {
     options = options || {};
     http.Agent.call(this, options);
 
+    this.keepAlive = true;
+
     this.max_reqs_per_socket = options.max_reqs_per_socket || 1000;
 
     // Keys are host:port names, values are lists of sockets.
