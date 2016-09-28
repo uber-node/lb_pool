@@ -163,6 +163,10 @@ PoolEndpointRequest.prototype.on_aborted = function () {
         return;
     }
 
+    if (this.timed_out) {
+        return this.on_response_timeout();
+    }
+
     var msg = this.endpoint.name + " error: connection aborted";
     this.state = "res_aborted";
     this.endpoint.request_failed({
