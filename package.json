@@ -6,6 +6,9 @@
     "type": "git",
     "url": "https://github.com/Voxer/lb_pool.git"
   },
+  "scripts": {
+    "test": "bash test/run.sh"
+  },
   "devDependencies": {
     "mocha": ">=1.8.1"
   }
