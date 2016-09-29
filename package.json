@@ -1,6 +1,6 @@
 {
   "name": "lb_pool",
-  "version": "1.5.0-node4-tests",
+  "version": "1.5.111",
   "description": "in-process HTTP load balancer client with retries",
   "repository": {
     "type": "git",
