@@ -190,6 +190,12 @@ describe("KeepAliveAgent", function () {
 });
 
 describe("KeepAliveAgent.Secure", function () {
+    var versions = process.version.split(".");
+    if (versions[0] > 'v0') {
+        it.skip("not supported in node4");
+        return;
+    }
+
     it("can construct a secure keep-alive agent", function () {
         var secure_agent = new KeepAliveAgent.HTTPS({});
         assert(secure_agent.defaultPort === 443);
