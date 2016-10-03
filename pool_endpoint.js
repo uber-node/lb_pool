@@ -153,12 +153,14 @@ PoolEndpoint.prototype.check_timeouts = function () {
     for (var i = 0; i < request_keys.length; i++) {
         var request = this.requests[request_keys[i]];
         var expire_time = now - request.options.timeout;
+
         if (request.last_touched <= expire_time) {
             if (request.options.path !== this.ping_path) {
                 this.emit("timeout", request);
             }
             request.timed_out = true;
             request.out_request.abort();
+            this.delete_request(request_keys[i]);
         }
     }
     this.request_rate = this.request_count - this.requests_last_check;
