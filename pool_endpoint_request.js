@@ -56,6 +56,9 @@ PoolEndpointRequest.prototype.start = function () {
     this.out_request.on("response", function (response) { self.on_response(response); });
     this.out_request.on("error", function (err) { self.on_error(err); });
     this.out_request.on("drain", function () { self.on_drain(); });
+    this.out_request.on("abort", function onAbort(err) {
+        self.on_error(new Error('lb_pool: request aborted'));
+    });
 
     var data = this.options.data;
     if (!data && this.options.end === false) {
