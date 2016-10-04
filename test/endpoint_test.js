@@ -118,8 +118,9 @@ describe("PoolEndpoint", function () {
 
                 setTimeout(function () {
                     s.close();
+
                     assert.equal(error.reason, "timed_out");
-                    assert.equal(/response timed out$/.test(error.message), true);
+                    assert.equal(/timed out$/.test(error.message), true);
                     done();
                 }, 60);
             });
