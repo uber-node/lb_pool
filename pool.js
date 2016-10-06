@@ -270,15 +270,30 @@ Pool.prototype.get_node = Pool.prototype.get_endpoint;
 Pool.prototype.getNode = Pool.prototype.get_endpoint;
 
 Pool.prototype.pending = function () {
-    return this.endpoints.reduce(function (a, b) { return a + b.pending; }, 0);
+    var count = 0;
+    var endpoints = this.endpoints;
+    for (var i = 0; i < endpoints.length; i++) {
+        count += endpoints[i].pending;
+    }
+    return count;
 };
 
 Pool.prototype.rate = function () {
-    return this.endpoints.reduce(function (a, b) { return a + b.request_rate; }, 0);
+    var count = 0;
+    var endpoints = this.endpoints;
+    for (var i = 0; i < endpoints.length; i++) {
+        count += endpoints[i].request_rate;
+    }
+    return count;
 };
 
 Pool.prototype.request_count = function () {
-    return this.endpoints.reduce(function (a, b) { return a + b.request_count; }, 0);
+    var count = 0;
+    var endpoints = this.endpoints;
+    for (var i = 0; i < endpoints.length; i++) {
+        count += endpoints[i].request_count;
+    }
+    return count;
 };
 
 Pool.prototype.close = function () {
