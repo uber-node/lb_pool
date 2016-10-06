@@ -46,7 +46,7 @@ function PoolEndpoint(protocol, ip, port, options) {
 
     this.agent.maxSockets = options.max_sockets || options.maxSockets || 5;
 
-    this.requests = {};
+    this.requests = Object.create(null);
     this.request_count = 0;
     this.requests_last_check = 0;
     this.request_rate = 0;
@@ -149,9 +149,10 @@ PoolEndpoint.prototype.stats = function () {
 
 PoolEndpoint.prototype.check_timeouts = function () {
     var now = Date.now(); // only run Date.now() once per check interval
-    var request_keys = Object.keys(this.requests);
-    for (var i = 0; i < request_keys.length; i++) {
-        var request = this.requests[request_keys[i]];
+    var requests = this.requests;
+    var delete_array = [];
+    for (var req_id in requests) {
+        var request = requests[req_id];
         var expire_time = now - request.options.timeout;
 
         if (request.last_touched <= expire_time) {
@@ -160,8 +161,11 @@ PoolEndpoint.prototype.check_timeouts = function () {
             }
             request.timed_out = true;
             request.out_request.abort();
-            this.delete_request(request_keys[i]);
+            delete_array.push(req_id);
         }
+    }
+    for (var i = 0; i < delete_array.length; i++) {
+        this.delete_request(delete_array[i]);
     }
     this.request_rate = this.request_count - this.requests_last_check;
     this.requests_last_check = this.request_count;
