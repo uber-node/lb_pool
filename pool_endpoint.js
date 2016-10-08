@@ -57,17 +57,19 @@ function PoolEndpoint(protocol, ip, port, options) {
 
     this.timeout = (options.timeout === 0) ? 0 : options.timeout || (60 * 1000);
     this.resolution = (options.resolution === 0) ? 0 : options.resolution || 1000;
-    if (this.resolution > 0 && this.timeout > 0) {
-        var self = this;
-        this.timeout_interval = setInterval(function () {
-            self.check_timeouts();
-        }, this.resolution);
-    }
+    this.timeout_enabled = this.resolution > 0 && this.timeout > 0;
+    this.timeout_interval = null;
+    this.bindCheckTimeouts = bindCheckTimeouts;
 
     // note that the pinger doesn't start by default, but in the future we might want to add an option for checking an endpoint before ever using it
     this.ping_path = options.ping;
     this.ping_timeout = options.ping_timeout || 5000;
     this.pinger = new GO.PoolPinger(this);
+
+    var self = this;
+    function bindCheckTimeouts() {
+        self.check_timeouts();
+    }
 }
 inherits(PoolEndpoint, EventEmitter);
 
@@ -99,6 +101,13 @@ PoolEndpoint.prototype.request = function (options, callback) {
     this.update_pending();
     this.requests[req.id] = req;
     req.start();
+
+    if (this.timeout_enabled && !this.timeout_interval) {
+        this.timeout_interval = setInterval(
+            this.bindCheckTimeouts,
+            this.resolution
+        );
+    }
 
     // If you want to retry, you can't stream.
     if (has_retry) {
@@ -148,8 +157,14 @@ PoolEndpoint.prototype.stats = function () {
 };
 
 PoolEndpoint.prototype.check_timeouts = function () {
-    var now = Date.now(); // only run Date.now() once per check interval
     var requests = this.requests;
+
+    if (requests.length === 0) {
+        clearInterval(this.timeout_interval);
+        return;
+    }
+
+    var now = Date.now(); // only run Date.now() once per check interval
     var delete_array = [];
     for (var req_id in requests) {
         var request = requests[req_id];
