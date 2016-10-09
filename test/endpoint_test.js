@@ -176,6 +176,61 @@ describe("PoolEndpoint", function () {
             s.listen(6969);
         });
 
+        it("stops and starts the timeout interval properly", function (done) {
+            var s = http.createServer(function handleTestReq(req, res) {
+                setTimeout(function () {
+                    res.end("foo");
+                }, 30);
+            });
+            s.on("listening", function onTestServerListening() {
+                var e = new PoolEndpoint(
+                    http,
+                    "127.0.0.1",
+                    s.address().port,
+                    {
+                        keepAlive: true,
+                        timeout: 20,
+                        resolution: 10
+                    }
+                );
+                var fin = false;
+
+                assert(e.timeout_interval === null);
+
+
+                e.on("timeout", function onPoolEndpointTimeout() {
+                    fin = true;
+                });
+                e.request({path: "/foo", method: "GET"}, noop);
+                e.request({path: "/foo", method: "GET"}, noop);
+                e.request({path: "/foo", method: "GET"}, noop);
+
+                setTimeout(function afterFirstRequestsTimeout() {
+                    assert.equal(fin, true);
+                    assert.equal(Object.keys(e.requests).length, 0);
+
+                    // All requests have ended, interval should be stopped
+                    assert(e.timeout_interval === null);
+                    fin = false;
+
+                    // The timeout interval should start again
+                    e.request({path: "/foo", method: "GET"}, noop);
+                    e.request({path: "/foo", method: "GET"}, noop);
+                    e.request({path: "/foo", method: "GET"}, noop);
+                    assert(e.timeout_interval !== null);
+                    setTimeout(function afterSecondRequestsTimeout() {
+                        assert.equal(fin, true);
+                        assert.equal(Object.keys(e.requests).length, 0);
+                        s.close();
+                        assert(e.timeout_interval === null);
+                        done();
+                    }, 100);
+                }, 100);
+            });
+
+            s.listen(0);
+        });
+
         it("removes the request from this.requests on error", function (done) {
             var s = http.createServer(function (req, res) {
                 setTimeout(function () {
