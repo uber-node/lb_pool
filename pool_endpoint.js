@@ -159,6 +159,7 @@ PoolEndpoint.prototype.stats = function () {
 PoolEndpoint.prototype.check_timeouts = function () {
     if (this.pending === 0) {
         clearInterval(this.timeout_interval);
+        this.timeout_interval = null;
         return;
     }
 
