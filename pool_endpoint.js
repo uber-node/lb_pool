@@ -157,13 +157,12 @@ PoolEndpoint.prototype.stats = function () {
 };
 
 PoolEndpoint.prototype.check_timeouts = function () {
-    var requests = this.requests;
-
-    if (requests.length === 0) {
+    if (this.pending === 0) {
         clearInterval(this.timeout_interval);
         return;
     }
 
+    var requests = this.requests;
     var now = Date.now(); // only run Date.now() once per check interval
     var delete_array = [];
     for (var req_id in requests) {
