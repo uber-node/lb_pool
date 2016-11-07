@@ -330,4 +330,77 @@ describe("Pool request()", function () {
         });
         next();
     });
+
+    it("tracks pending count properly", function (done) {
+        var req_count = 0;
+        var listen_count = 0;
+
+        var ports = [6960, 6961, 6962, 6963, 6964, 6965];
+        var servers = [];
+        var endpoint_list = ports.map(function (port) { return "127.0.0.1:" + port; });
+        var pool = new Pool(http, endpoint_list, { ping: "/ping" });
+
+        function countPending() {
+            var total = 0;
+
+            for (var i = 0; i < pool.endpoints.length; i++) {
+                total += pool.endpoints[i].pending;
+            }
+
+            return total;
+        }
+
+        function start() {
+            var counter = 0;
+            var total = 3;
+            var responses = 3;
+
+            for (var i = 0; i < total; i++) {
+                pool.get({
+                    path: "/foo",
+                    retry_delay: 0
+                }, null, onResponse);
+                console.log('pend', countPending());
+                assert.equal(countPending(), i + 1);
+            }
+
+            function onResponse(err, res, body) {
+                assert.strictEqual(body, "OK");
+
+                responses--;
+                console.log('pend', countPending());
+                assert.equal(countPending(), responses);
+                counter++;
+                if (counter === total) {
+                    onComplete();
+                }
+            }
+        }
+
+        function onComplete() {
+            servers.forEach(function (server) {
+                server.close();
+            });
+            done();
+        }
+
+        ports.forEach(function (port) {
+            var server = http.createServer(on_request);
+            server.listen(port);
+            server.on("listening", on_listening);
+            servers.push(server);
+
+            function on_request(req, res) {
+                req_count++;
+                res.end("OK");
+            }
+
+            function on_listening() {
+                listen_count++;
+                if (listen_count === ports.length) {
+                    start();
+                }
+            }
+        });
+    });
 });
