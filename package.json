@@ -1,6 +1,6 @@
 {
   "name": "lb_pool",
-  "version": "1.6.2",
+  "version": "1.6.3",
   "description": "in-process HTTP load balancer client with retries",
   "repository": {
     "type": "git",
