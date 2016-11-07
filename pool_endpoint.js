@@ -29,7 +29,6 @@ function PoolEndpoint(protocol, ip, port, options) {
     this.ip = ip;
     this.address = ip;
     this.port = port;
-    this.name = this.ip + ":" + this.port;
 
     this.keep_alive = options.keep_alive || options.keepAlive;
     this.agent_options = options.agent_options || options.agentOptions;
@@ -42,6 +41,15 @@ function PoolEndpoint(protocol, ip, port, options) {
         }
     } else {
         this.agent = new protocol.Agent(this.agent_options);
+    }
+
+    if (this.agent && typeof this.agent.getName === 'function') {
+        this.name = this.agent.getName({
+            host: this.ip,
+            port: this.port
+        });
+    } else {
+        this.name = this.ip + ":" + this.port;
     }
 
     this.agent.maxSockets = options.max_sockets || options.maxSockets || 5;

@@ -104,6 +104,92 @@ describe("Pool request()", function () {
         server.on("listening", on_listening);
     });
 
+    it("reuses open sockets when making requests", function (done) {
+        var ports = [6960, 6961, 6962, 6963, 6964];
+
+        var endpoint_list = ports.map(function hostPort(p) {
+            return "127.0.0.1:" + p;
+        });
+
+        var pool = new Pool(http, endpoint_list, {
+            ping: "/ping",
+            keep_alive: true,
+            max_pending: 300,
+            max_sockets: 2
+        });
+        var servers = [];
+        var listen_count = 0;
+
+        function send_requests() {
+            var completed = 0;
+            var total = 10;
+            var seenRemotes = [];
+
+            send_a_request();
+
+            function send_a_request() {
+                var req = pool.get({
+                    path: "/foo/" + completed
+                }, null, function (err, res, body) {
+                    var addr = res.socket.address();
+
+                    if (seenRemotes.indexOf(addr.port) === -1) {
+                        seenRemotes.push(addr.port);
+                    }
+
+                    assert.ifError(err);
+                    assert.strictEqual(body, "OK " + completed);
+
+                    completed++;
+                    if (completed === total) {
+                        finish();
+                    } else {
+                        send_a_request();
+                    }
+                });
+
+                var endpoint = req.endpoint;
+
+                if (completed === 0) {
+                    assert.equal(endpoint.ready(), false);
+                    assert.equal(endpoint.stats().socket_count, 1);
+                } else {
+                    assert.equal(endpoint.ready(), true);
+                    assert.equal(endpoint.stats().socket_count, 2);
+                }
+            }
+
+            function finish() {
+                assert.strictEqual(seenRemotes.length, 2);
+
+                servers.forEach(function closeIt(s) {
+                    s.close();
+                })
+                done();
+            }
+        }
+
+        function on_request(req, res) {
+            var num = require("url").parse(req.url).pathname.split("/")[2];
+            res.end("OK " + num);
+        }
+
+        function on_listening() {
+            listen_count++;
+            if (listen_count === ports.length) {
+                send_requests();
+            }
+        }
+
+        ports.forEach(function (port) {
+            var server = http.createServer(on_request);
+            server.listen(port);
+            server.on("listening", on_listening);
+            servers.push(server);
+        });
+    });
+
+
     it("uses a specific endpoint if options.endpoint is set, even on retries", function (done) {
         var req_count = 0;
         var listen_count = 0;
