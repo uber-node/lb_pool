@@ -33,14 +33,18 @@ function PoolEndpoint(protocol, ip, port, options) {
     this.keep_alive = options.keep_alive || options.keepAlive;
     this.agent_options = options.agent_options || options.agentOptions;
 
-    if (this.keep_alive) {
-        if (protocol === http) {
-            this.agent = new GO.KeepAliveAgent.HTTP(this.agent_options);
-        } else {
-            this.agent = new GO.KeepAliveAgent.HTTPS(this.agent_options);
-        }
+    if (options.agent) {
+        this.agent = options.agent;
     } else {
-        this.agent = new protocol.Agent(this.agent_options);
+        if (this.keep_alive) {
+            if (protocol === http) {
+                this.agent = new GO.KeepAliveAgent.HTTP(this.agent_options);
+            } else {
+                this.agent = new GO.KeepAliveAgent.HTTPS(this.agent_options);
+            }
+        } else {
+            this.agent = new protocol.Agent(this.agent_options);
+        }
     }
 
     if (this.agent && typeof this.agent.getName === 'function') {
