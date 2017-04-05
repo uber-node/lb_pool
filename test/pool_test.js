@@ -68,6 +68,216 @@ describe("Pool", function () {
         assert.equal(p.length, 3);
     });
 
+    it("sets limits endpoints to max_pool_size option", function () {
+        var endpoints = [
+            "127.0.0.1:8080",
+            "127.0.0.1:8081",
+            "127.0.0.1:8082",
+            "127.0.0.1:8083",
+            "127.0.0.1:8084",
+            "127.0.0.1:8085",
+            "127.0.0.1:8086"
+        ];
+        var p = new Pool(http, endpoints, {max_pool_size: 2});
+        assert.equal(p.length, 2);
+    });
+
+    it("throws an Error when options.max_pool_size is invalid", function () {
+        assert.throws(function () {
+            return new Pool({}, ["127.0.0.1:8080"], {max_pool_size: -1});
+        });
+    });
+
+    describe("add/remove endpoints", function () {
+        var endpoints = [
+            "127.0.0.1:8080",
+            "127.0.0.1:8081",
+            "127.0.0.1:8082"
+        ];
+
+        it("adds endpoint", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            p.add_endpoint("127.0.0.1:8086")
+            assert.equal(p.length, 4);
+        });
+
+        it("filters invalid port", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            p.add_endpoint("127.0.0.1:999999");
+            assert.equal(p.length, 3);
+        });
+
+        it("filters invalid hostport no sep", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            p.add_endpoint("localhost999999");
+            assert.equal(p.length, 3);
+        });
+
+
+        it("adds endpoints according to  max_pool_size", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep, {max_pool_size: 2});
+            assert.equal(p.length, 2);
+
+            for (var i = 0; i < 20; i++) {
+                var port = 8090 + i;
+                p.add_endpoint("127.0.0.1:" + port);
+            }
+            assert.equal(p.length, 2);
+        });
+
+        it("adds endpoints with larger max_pool_size", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep, {max_pool_size: 20});
+            assert.equal(p.length, ep.length);
+
+            for (var i = 0; i < 20; i++) {
+                var port = 8090 + i;
+                p.add_endpoint("127.0.0.1:" + port);
+                var expSize = Math.min(20, i + 1 + ep.length);
+                assert.equal(p.length, expSize);
+            }
+        });
+
+        it("removes endpoints", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8080")
+            assert.equal(p.length, 2);
+        })
+
+        it("removing non-existant endpoint is no-op", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8089")
+            assert.equal(p.length, 3);
+        })
+
+        it("removes endpoints with max_pool_size set", function () {
+            var ep = endpoints.slice(0);
+            ep.push("127.0.0.1:8083")
+            ep.push("127.0.0.1:8084")
+            var p = new Pool(http, ep, {maxPoolSize: 3});
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+            p.add_endpoint("127.0.0.1:8085");
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+            assert.equal(p.all_hostports.length, 6);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8085")
+            assert.equal(p.all_hostports.length, 5);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8084")
+            assert.equal(p.all_hostports.length, 4);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8083")
+            assert.equal(p.all_hostports.length, 3);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8082")
+            assert.equal(p.all_hostports.length, 2);
+            assert.equal(p.length, 2);
+            p.remove_endpoint("127.0.0.1:8081")
+            assert.equal(p.all_hostports.length, 1);
+            assert.equal(p.length, 1);
+        })
+
+        it("removes endpoints works with max_size > all_hostports", function () {
+            var ep = endpoints.slice(0);
+            ep.push("127.0.0.1:8083")
+            ep.push("127.0.0.1:8084")
+            var p = new Pool(http, ep, {maxPoolSize: 20});
+            assert.equal(Object.keys(p.endpoints_by_name).length, 5);
+            p.add_endpoint("127.0.0.1:8085");
+            assert.equal(Object.keys(p.endpoints_by_name).length, 6);
+            assert.equal(p.all_hostports.length, 6);
+            assert.equal(p.length, 6);
+            p.remove_endpoint("127.0.0.1:8085")
+            assert.equal(p.all_hostports.length, 5);
+            assert.equal(p.length, 5);
+            p.remove_endpoint("127.0.0.1:8084")
+            assert.equal(p.all_hostports.length, 4);
+            assert.equal(p.length, 4);
+            p.remove_endpoint("127.0.0.1:8083")
+            assert.equal(p.all_hostports.length, 3);
+            assert.equal(p.length, 3);
+            p.remove_endpoint("127.0.0.1:8082")
+            assert.equal(p.all_hostports.length, 2);
+            assert.equal(p.length, 2);
+            p.remove_endpoint("127.0.0.1:8081")
+            assert.equal(p.all_hostports.length, 1);
+            assert.equal(p.length, 1);
+        })
+    });
+
+    describe("adjust_pool_size", function () {
+        var endpoints = [
+            "127.0.0.1:8080",
+            "127.0.0.1:8081",
+            "127.0.0.1:8082",
+            "127.0.0.1:8083",
+            "127.0.0.1:8084"
+        ];
+
+        it("adjust is no-op if max_pool_size not set", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep);
+            assert.equal(p.length, 5);
+            assert.equal(p.all_hostports.length, 5);
+            p.adjust_pool_size();
+            assert.equal(p.length, 5);
+            assert.equal(p.all_hostports.length, 5);
+        });
+
+        it("adjust removes pool endpoints if there are too many", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep, {maxPoolSize: 3});
+            assert.equal(p.all_hostports.length, 5);
+            assert.equal(p.length, 3);
+            assert.equal(p.endpoints.length, 3);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+
+            for (var i = 0; i < endpoints.length; i++) {
+                p.add_pool_endpoint(endpoints[i]);
+            }
+            assert.equal(p.length, 5);
+            assert.equal(p.endpoints.length, 5);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 5);
+
+            p.adjust_pool_size();
+
+            assert.equal(p.length, 3);
+            assert.equal(p.endpoints.length, 3);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+        });
+
+        it("adjust adds pool endpoints if there are too few", function () {
+            var ep = endpoints.slice(0);
+            var p = new Pool(http, ep, {maxPoolSize: 3});
+            assert.equal(p.all_hostports.length, 5);
+            assert.equal(p.length, 3);
+            assert.equal(p.endpoints.length, 3);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+
+            for (var i = 0; i < endpoints.length; i++) {
+                p.remove_pool_endpoint(endpoints[i]);
+            }
+            assert.equal(p.length, 0);
+            assert.equal(p.endpoints.length, 0);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 0);
+
+            p.adjust_pool_size();
+
+            assert.equal(p.length, 3);
+            assert.equal(p.endpoints.length, 3);
+            assert.equal(Object.keys(p.endpoints_by_name).length, 3);
+        });
+    })
+
+
     describe("healthy_endpoints()", function () {
         it("filters out unhealthy endpoints from the result", function () {
             var p = new Pool(http, ["127.0.0.1:8080", "127.0.0.1:8081", "127.0.0.1:8082"]);
