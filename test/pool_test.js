@@ -82,6 +82,46 @@ describe("Pool", function () {
         assert.equal(p.length, 2);
     });
 
+    it("selecting endpoints from max_pool_size should be random", function () {
+        var endpoints = [
+            "127.0.0.1:8080",
+            "127.0.0.1:8081",
+            "127.0.0.1:8082",
+            "127.0.0.1:8083",
+            "127.0.0.1:8084",
+            "127.0.0.1:8085",
+            "127.0.0.1:8086"
+        ];
+
+        var pools = [
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2}),
+            new Pool(http, endpoints, {max_pool_size: 2})
+        ];
+
+        var seenEndpoints = {};
+        for (var i = 0; i < pools.length; i++) {
+            var p = pools[i];
+            var endpointsByName = Object.keys(p.endpoints_by_name);
+            for (var j = 0; j < endpointsByName.length; j++) {
+                var hostPort = endpointsByName[j];
+                if (!seenEndpoints[hostPort]) {
+                    seenEndpoints[hostPort] = 1;
+                } else {
+                    seenEndpoints[hostPort]++;
+                }
+            }
+        }
+
+        // Should see at least 75% of endpoints picked.
+        var numberOfEndpoints = Object.keys(seenEndpoints).length;
+        assert.ok(numberOfEndpoints >= 5)
+    });
+
     it("throws an Error when options.max_pool_size is invalid", function () {
         assert.throws(function () {
             return new Pool({}, ["127.0.0.1:8080"], {max_pool_size: -1});
