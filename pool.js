@@ -72,7 +72,7 @@ function Pool(http, endpoints, options) {
                 selectedEndpoints[j] = endpoints[j];
             } else {
                 // random replacement with decreasing probablity
-                var r = Math.random() * (j + 1);
+                var r = Math.floor(Math.random() * (j + 1));
                 if (r < this.max_pool_size) {
                     selectedEndpoints[r] = endpoints[j];
                 }
