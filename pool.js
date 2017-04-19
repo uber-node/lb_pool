@@ -358,7 +358,7 @@ Pool.prototype.add_endpoint = function add_endpoint(host_port) {
     // if using maxSize, probabilistically add the new host port to the
     // active pool endpoints
     if (maxSizeIsRelevant) {
-        var r = Math.random() * this.all_hostports.length;
+        var r = Math.floor(Math.random() * this.all_hostports.length);
         // note: the + 1 is a significant bias correction for adding then removing
         if (r < this.max_pool_size + 1) {
             this.add_pool_endpoint(host_port);
