@@ -13,7 +13,7 @@ function PoolEndpointRequest(endpoint, options, callback) {
     options.port = endpoint.port;
     options.retry_filter = options.retry_filter || noop;
     options.timeout = options.timeout || endpoint.timeout;
-    options.headers = options.headers || {};
+    options.headers = cleanHeaders(options.headers);
     if (options.agent !== false) {
         options.agent = endpoint.agent;
     }
@@ -294,6 +294,25 @@ function PoolEndpointRequestAttempt(poolEndpointRequest) {
     this.request_req_end = poolEndpointRequest.req_end;
     this.request_res_start = poolEndpointRequest.res_start;
     this.request_writable = poolEndpointRequest.writable;
+}
+
+function cleanHeaders(headers) {
+    if (!headers) {
+        return {};
+    }
+
+    var newHeaders = {};
+    var headerNames = Object.keys(headers);
+
+    for (var i = 0; i < headerNames.length; i++) {
+        var headerName = headerNames[i];
+        var headerValue = headers[headerName];
+        if (headerValue != null) {
+            newHeaders[headerName] = String(headerValue);
+        }
+    }
+
+    return newHeaders;
 }
 
 module.exports = function init(new_GO) {
